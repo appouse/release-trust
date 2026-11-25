@@ -1,0 +1,43 @@
+# Appouse sürüm imajlarını keyless (Sigstore) imzalar. Kaynak kod bu depoda yoktur; yalnız imzalama.
+# Kimlik: https://github.com/appouse/release-trust/.github/workflows/sign.yml@refs/heads/main
+name: sign
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Tek bir imaj (proje/depo@sha256:…); boşsa tüm yeni sürümler"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write   # Sigstore (Fulcio) kimlik belirteci
+
+concurrency:
+  group: sign
+  cancel-in-progress: false
+
+jobs:
+  sign:
+    # Public depoda self-hosted runner kullanılmaz.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: sigstore/cosign-installer@881c63bd87e38389154debd8331404ce7ca8a3ab # v4.1.4
+        with:
+          cosign-release: v3.1.5
+      - name: Registry login
+        env:
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+        run: echo "$HARBOR_PASSWORD" | cosign login registry.appouse.services -u "$HARBOR_USERNAME" --password-stdin
+      - name: Yeni sürümleri imzala
+        env:
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+          ONLY_IMAGE: ${{ inputs.image }}
+        run: python3 scripts/sign_new.py trust.json
