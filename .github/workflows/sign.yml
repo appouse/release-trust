@@ -30,6 +30,19 @@ jobs:
       - uses: sigstore/cosign-installer@881c63bd87e38389154debd8331404ce7ca8a3ab # v4.1.4
         with:
           cosign-release: v3.1.5
+      # Geçiş dönemi: Kubewarden henüz cosign v3 (Sigstore bundle) imzalarını doğrulayamıyor
+      # (kubewarden/adm-controller#1237). Bu yüzden imajlar cosign v2 ile eski (.sig) biçimde de imzalanır.
+      # Kubewarden desteklediğinde bu adım ve COSIGN2 kaldırılır.
+      - name: cosign v2 (eski biçim) — sağlama toplamı doğrulanarak
+        env:
+          V: v2.6.5
+        run: |
+          mkdir -p "$RUNNER_TEMP/cosign2" && cd "$RUNNER_TEMP/cosign2"
+          curl -fsSLo cosign-linux-amd64 "https://github.com/sigstore/cosign/releases/download/$V/cosign-linux-amd64"
+          curl -fsSLo cosign_checksums.txt "https://github.com/sigstore/cosign/releases/download/$V/cosign_checksums.txt"
+          grep ' cosign-linux-amd64$' cosign_checksums.txt | sha256sum -c -
+          mv cosign-linux-amd64 cosign && chmod +x cosign && ./cosign version | grep GitVersion
+          echo "COSIGN2=$RUNNER_TEMP/cosign2/cosign" >> "$GITHUB_ENV"
       - name: Yeni sürümleri imzala
         env:
           # Proje başına ayrı, dar yetkili robot (list, pull, imza push): {"<proje>": {"username": .., "password": ..}}

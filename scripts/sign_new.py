@@ -73,18 +73,23 @@ def main():
             refs += list(candidates(cfg, project))
     signed = skipped = 0
     logged_in = None
+    # cosign v3 (Sigstore bundle) her zaman; COSIGN2 verildiyse eski (.sig) biçim de — Kubewarden uyumu için.
+    tools = [("v3", "cosign")] + ([("v2", os.environ["COSIGN2"])] if os.environ.get("COSIGN2") else [])
     for ref, tags, project in refs:
         if project != logged_in:
             login(cfg, project)
             logged_in = project
-        ok = subprocess.run(["cosign", "verify", ref, "--certificate-identity", identity,
-                             "--certificate-oidc-issuer", cfg["issuer"]], capture_output=True).returncode == 0
-        if ok:
+        missing = [name for name, binary in tools if subprocess.run(
+            [binary, "verify", ref, "--certificate-identity", identity, "--certificate-oidc-issuer", cfg["issuer"]],
+            capture_output=True).returncode != 0]
+        if not missing:
             skipped += 1
             continue
-        print(f"imzalanıyor: {ref} {tags}", flush=True)
+        print(f"imzalanıyor ({', '.join(missing)}): {ref} {tags}", flush=True)
         if os.environ.get("DRY_RUN") != "1":
-            subprocess.run(["cosign", "sign", "--yes", ref], check=True)
+            for name, binary in tools:
+                if name in missing:
+                    subprocess.run([binary, "sign", "--yes", ref], check=True)
         signed += 1
     summary = f"imzalanan: {signed}, zaten imzalı: {skipped}, kimlik: {identity}"
     print(summary)

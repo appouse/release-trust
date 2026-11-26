@@ -17,6 +17,8 @@ cosign verify registry.appouse.services/orkestra/<imaj>@sha256:<özet> \
 
 Kubernetes'te (Kubewarden `verify-image-signatures`) aynı kimlik ve issuer kullanılır.
 
+**Biçimler:** imzalar cosign v3 (Sigstore bundle; doğrulama cosign ≥ 3 ister) ve geçiş dönemince cosign v2 eski (`.sig`) biçiminde atılır; Kubewarden henüz v3 biçimini doğrulayamıyor ([kubewarden/adm-controller#1237](https://github.com/kubewarden/adm-controller/issues/1237)).
+
 ---
 
 This repository only signs Appouse release images (keyless, Sigstore); it contains no source code. The transparency log
