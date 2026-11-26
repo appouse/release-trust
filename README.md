@@ -23,3 +23,12 @@ Kubernetes'te (Kubewarden `verify-image-signatures`) aynı kimlik ve issuer kull
 
 This repository only signs Appouse release images (keyless, Sigstore); it contains no source code. The transparency log
 records this repository's identity and the image digest, never the products' private source repositories.
+
+## Tetikleme
+
+GitHub'ın zamanlanmış (`schedule`) çalıştırmaları az etkinlikli depolarda gecikir veya atlanır. Bu yüzden ürün
+depolarının sürüm iş akışı, imajları gönderdikten sonra son adımda bu iş akışını `workflow_dispatch` ile başlatır
+(girdisiz: tüm yeni sürümler taranır; ürün deposunun adı buraya ve Rekor'a gitmez). `*/15` zamanlaması yalnız yedektir.
+
+Ürün deposunda gereken gizli değer `RELEASE_TRUST_DISPATCH_TOKEN`: fine-grained PAT, kaynak sahibi `appouse`,
+yalnız `appouse/release-trust` deposu, izin **Actions: Read and write** (başka izin yok).
