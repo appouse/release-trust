@@ -1,6 +1,10 @@
 {
   "registry": "registry.appouse.services",
-  "projects": ["orkestra"],
+  "projects": [
+    "orkestra",
+    "boilerplate",
+    "s3grid"
+  ],
   "releaseTag": "^v?[0-9]+\\.[0-9]+\\.[0-9]+(-rc\\.[0-9]+)?$",
   "issuer": "https://token.actions.githubusercontent.com",
   "workflow": ".github/workflows/sign.yml",

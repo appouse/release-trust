@@ -30,14 +30,9 @@ jobs:
       - uses: sigstore/cosign-installer@881c63bd87e38389154debd8331404ce7ca8a3ab # v4.1.4
         with:
           cosign-release: v3.1.5
-      - name: Registry login
-        env:
-          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
-          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
-        run: echo "$HARBOR_PASSWORD" | cosign login registry.appouse.services -u "$HARBOR_USERNAME" --password-stdin
       - name: Yeni sürümleri imzala
         env:
-          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
-          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+          # Proje başına ayrı, dar yetkili robot (list, pull, imza push): {"<proje>": {"username": .., "password": ..}}
+          HARBOR_SIGNERS: ${{ secrets.HARBOR_SIGNERS }}
           ONLY_IMAGE: ${{ inputs.image }}
         run: python3 scripts/sign_new.py trust.json
