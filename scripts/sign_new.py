@@ -15,6 +15,7 @@ import os
 import re
 import subprocess
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -56,6 +57,20 @@ def candidates(cfg, project):
             page += 1
 
 
+def legacy_signature_exists(cfg, ref, project):
+    """Eski (cosign v2) imza: aynı depoda sha256-<özet>.sig etiketi."""
+    repo, digest = ref.split("/", 2)[2].split("@", 1)  # <registry>/<project>/<repo>@sha256:...
+    enc = urllib.parse.quote(urllib.parse.quote(repo, safe=""), safe="")
+    tag = digest.replace(":", "-") + ".sig"
+    try:
+        harbor(cfg, f"/projects/{project}/repositories/{enc}/artifacts/{tag}", project)
+        return True
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return False
+        raise
+
+
 def main():
     cfg = json.load(open(sys.argv[1] if len(sys.argv) > 1 else "trust.json"))
     identity = f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/{cfg['workflow']}@refs/heads/{cfg['branch']}"
@@ -79,9 +94,13 @@ def main():
         if project != logged_in:
             login(cfg, project)
             logged_in = project
-        missing = [name for name, binary in tools if subprocess.run(
-            [binary, "verify", ref, "--certificate-identity", identity, "--certificate-oidc-issuer", cfg["issuer"]],
-            capture_output=True).returncode != 0]
+        missing = []
+        if subprocess.run(["cosign", "verify", ref, "--certificate-identity", identity,
+                           "--certificate-oidc-issuer", cfg["issuer"]], capture_output=True).returncode != 0:
+            missing.append("v3")
+        # Yeni cosign sürümleri bundle imzasını da doğrulayabildiği için eski biçim, .sig etiketinin varlığıyla denetlenir.
+        if len(tools) > 1 and not legacy_signature_exists(cfg, ref, project):
+            missing.append("v2")
         if not missing:
             skipped += 1
             continue
@@ -89,7 +108,8 @@ def main():
         if os.environ.get("DRY_RUN") != "1":
             for name, binary in tools:
                 if name in missing:
-                    subprocess.run([binary, "sign", "--yes", ref], check=True)
+                    extra = ["--new-bundle-format=false"] if name == "v2" else []
+                    subprocess.run([binary, "sign", "--yes", *extra, ref], check=True)
         signed += 1
     summary = f"imzalanan: {signed}, zaten imzalı: {skipped}, kimlik: {identity}"
     print(summary)
